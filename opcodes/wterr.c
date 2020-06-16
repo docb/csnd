@@ -31,6 +31,14 @@
  *
  *  author: m gilliard
  *          en6mjg@bath.ac.uk
+ *
+ *  enhancements and modifications
+ *  Christian Bacher docb22@googlemail.com
+ *  Changes to the original:
+ *  - Added curves: limacon with parameter, lemniskate (G), lissajous (4 variants), 
+ *  -               rhodonea (5 variants), cornoid with parameter, trisec (Ceva) with parameter
+ *  - tables are krate
+ *  - added k parameter for rotating the curve arround the current x,y
  */
 typedef struct {
 
@@ -100,16 +108,25 @@ static void lemniskateG(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT
     *outY = ky + kry * SIN(t)*COS(t);
 }
 
-
+/* the cornoid curve
+   see e.g. http://www.2dcurves.com/sextic/sexticco.html
+*/
 static void cornoid(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT kparam, MYFLT *outX, MYFLT *outY ) {
     *outX = kx + krx * COS(t) * COS(2*t);
     *outY = ky + kry * SIN(t) * (kparam + COS(2*t));
 }
+
+/* Chevas trisextix
+   see e.g. http://www.2dcurves.com/sextic/sextict.html
+*/
 static void trisec(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT kparam, MYFLT *outX, MYFLT *outY ) {
     *outX = kx + krx * COS(t) * (1+kparam*SIN(2*t));
     *outY = ky + kry * SIN(t) * (1+kparam*SIN(2*t));
 }
 
+/*
+    some lissajous curves, see parameters in LISSPARAMS
+*/
 
 typedef struct lissparams {
   double n;
@@ -127,6 +144,9 @@ static void lissajous(MYFLT t,  MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT 
     *outY = ky + kry * SIN((lp[index].n/lp[index].m)*t + lp[index].phi);
 }
 
+/*
+    some rhodonea curves, see parameters in RHODOPARAMS
+*/
 typedef struct rhodoparams {
   double n;
   double m;
@@ -158,6 +178,7 @@ static MYFLT rhodop(MYFLT kp) {
 static MYFLT one(MYFLT kp) {
    return 1;
 }
+
 
 static void (*ifuncs[7])(MYFLT,MYFLT,MYFLT,MYFLT,MYFLT,MYFLT,MYFLT*,MYFLT*) = { ellipse, limacon, lemniskateG, lissajous, rhodonea, cornoid, trisec }; 
 static MYFLT (*pfuncs[7])(MYFLT) = { one, one, one, lissp, rhodop, one,one }; 
