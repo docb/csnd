@@ -101,6 +101,9 @@ typedef struct superparams {
 } SUPERPARAMS;
 
 static void superformula(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, SUPERPARAMS *sp, MYFLT *outX, MYFLT *outY) {
+    if(sp->n1 == 0) return;
+    if(sp->a == 0) return;
+    if(sp->b == 0) return;
     MYFLT y = sp->y;
     MYFLT z = sp->z;
     MYFLT n1 = sp->n1;
@@ -160,7 +163,8 @@ static int32_t wtPerf(CSOUND *csound, SUPERTER *p)
     s.n3 = *p->sn3;
     s.a = *p->sa;
     s.b = *p->sb;
-    MYFLT period = 1/(*p->speriod);
+    MYFLT period = 1;
+    if(*p->speriod != 0) period = 1/(*p->speriod);
 
     MYFLT sizx = p->sizx, sizy = p->sizy;
     MYFLT theta = p->theta;
