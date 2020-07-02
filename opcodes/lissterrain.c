@@ -1,5 +1,5 @@
 /*
-    wterrain2.c:
+    lissterrain.c:
 
     Copyright (C) 2002 Matt Gilliard, John ffitch
     for the original file wave-terrain.c from the csound distribution
@@ -35,7 +35,8 @@
  *  enhancements and modifications
  *  Christian Bacher docb22@googlemail.com
  *  Changes to the original:
- *  - Added curves: lemniskate (G), limacon with parameter, cornoid with parameter, trisec (Ceva) with parameter, scarabeus with 2 parameters, folium with parameter
+ *  - uses lissajous curves 
+ *  
  *  - tables are krate
  *  - added k parameter for rotating the curve arround the current x,y
  */
@@ -52,9 +53,15 @@ typedef struct {
   MYFLT *kry;
   MYFLT *krot; // rotation of the curve
   MYFLT *ktabx, *ktaby;       /* Table numbers */
-  MYFLT *kfunc; // the curve index
-  MYFLT *kparam1;
-  MYFLT *kparam2;
+  MYFLT *lm1;
+  MYFLT *lm2;
+  MYFLT *la;
+  MYFLT *lc;
+  MYFLT *ln1;
+  MYFLT *ln2;
+  MYFLT *lb;
+  MYFLT *speriod;
+
 
 /* Internals */
   MYFLT oldfnx;  // storage of the current table for k-rate table change
@@ -65,7 +72,7 @@ typedef struct {
   MYFLT sizx, sizy;
   double theta;
 
-} WAVETER;
+} LISSTERR;
 
 static void rotate_point(MYFLT  cx, MYFLT  cy, MYFLT  angle, MYFLT *x, MYFLT *y)
 {
@@ -83,72 +90,28 @@ static void rotate_point(MYFLT  cx, MYFLT  cy, MYFLT  angle, MYFLT *x, MYFLT *y)
   *y = ynew + cy;
 }
 
-/* the normal eclipse function with center kx,ky and radius krx and kry */
+typedef struct lissparams {
+  double m1;
+  double m2;
+  double n1;
+  double n2;
+  double a;
+  double b;
+  double c;
+} LISSPARAMS;
 
-static void ellipse(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT *kparam, MYFLT *outX, MYFLT *outY ) {
-    *outX = kx + krx * SIN(t);
-    *outY = ky + kry * COS(t);
+static void lissformula(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, LISSPARAMS *sp, MYFLT *outX, MYFLT *outY) {
+    if(sp->m2 == 0) return;
+    if((sp->c!=0) && (sp->n2!=0)) { 
+      *outX = kx + krx*SIN(t);
+      *outY = ky + kry*(SIN(t*sp->m1/sp->m2 + sp->a) + sp->c*SIN(t*sp->n1/sp->n2 + sp->b));
+    } else {
+      *outX = kx + krx*SIN(t);
+      *outY = ky + kry*(SIN(t*sp->m1/sp->m2 + sp->a));
+    }
 }
 
-/* the limacon curve parametrized by the kparam value 
-   see e.g. http://www.2dcurves.com/roulette/roulettel.html
-   for kparam = 1 we have a cardioid
-*/
-
-static void limacon(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT *kparam, MYFLT *outX, MYFLT *outY ) {
-    *outX = kx + krx * SIN(t) * (COS(t) + kparam[0]); 
-    *outY = ky + kry * COS(t) * (COS(t) + kparam[0]);
-}
-
-/* a simple 8 */
-
-static void lemniskateG(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT *kparam, MYFLT *outX, MYFLT *outY ) {
-    *outX = kx + krx * COS(t);
-    *outY = ky + kry * SIN(t)*COS(t);
-}
-
-/* the cornoid curve
-   see e.g. http://www.2dcurves.com/sextic/sexticco.html
-*/
-static void cornoid(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT *kparam, MYFLT *outX, MYFLT *outY ) {
-    *outX = kx + krx * COS(t) * COS(2*t);
-    *outY = ky + kry * SIN(t) * (kparam[0] + COS(2*t));
-}
-
-/* Chevas trisextix
-   see e.g. http://www.2dcurves.com/sextic/sextict.html
-*/
-static void trisec(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT *kparam, MYFLT *outX, MYFLT *outY ) {
-    *outX = kx + krx * COS(t) * (1+kparam[0]*SIN(2*t));
-    *outY = ky + kry * SIN(t) * (1+kparam[0]*SIN(2*t));
-}
-
-/* Scarabeus curve see e.g http://www.2dcurves.com/sextic/sexticsc.html
-*/
-
-static void scarabeus(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT *kparam, MYFLT *outX, MYFLT *outY ) {
-    *outX = kx + krx * COS(t) * (kparam[0]*SIN(2*t)+kparam[1]*SIN(t));
-    *outY = ky + kry * SIN(t) * (kparam[0]*SIN(2*t)+kparam[1]*SIN(t));
-}
-/* folium see http://www.2dcurves.com/quartic/quarticfo.html */
-static void folium(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT *kparam, MYFLT *outX, MYFLT *outY ) {
-    double sint = SIN(t);
-    double cost = COS(t);
-    *outX = kx + krx * cost * cost * (sint*sint - kparam[0]);
-    *outY = ky + kry * sint * cost * (sint*sint - kparam[0]);
-}
-
-/* talbot see http://www.2dcurves.com/trig/trigta.html */
-static void talbot(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT *kparam, MYFLT *outX, MYFLT *outY ) {
-    double sint = SIN(t);
-    double cost = COS(t);
-    *outX = kx + krx * cost * (1 + kparam[0] * sint*sint);
-    *outY = ky + kry * sint * (1 - kparam[0] - kparam[0]*cost*cost);
-}
-
-static void (*ifuncs[8])(MYFLT,MYFLT,MYFLT,MYFLT,MYFLT,MYFLT*,MYFLT*,MYFLT*) = { ellipse, lemniskateG, limacon, cornoid, trisec, scarabeus, folium, talbot }; 
-
-static int32_t wtinit(CSOUND *csound, WAVETER *p)
+static int32_t wtinit(CSOUND *csound, LISSTERR *p)
 {
     p->xarr = NULL;
     p->yarr = NULL;
@@ -161,7 +124,7 @@ static int32_t wtinit(CSOUND *csound, WAVETER *p)
     return OK;
 }
 
-static int32_t wtPerf(CSOUND *csound, WAVETER *p)
+static int32_t wtPerf(CSOUND *csound, LISSTERR *p)
 {
     uint32_t offset = p->h.insdshead->ksmps_offset;
     uint32_t early  = p->h.insdshead->ksmps_no_end;
@@ -184,11 +147,17 @@ static int32_t wtPerf(CSOUND *csound, WAVETER *p)
       p->sizy = (MYFLT)ftp->flen;
     }
 
-
-    uint32_t kfunc = (uint32_t)*p->kfunc;
-    if(kfunc>7) kfunc = 7; 
+    LISSPARAMS s;
+    s.m1 = FLOOR(*p->lm1);
+    s.m2 = FLOOR(*p->lm2);
+    s.n1 = FLOOR(*p->ln1);
+    s.n2 = FLOOR(*p->ln2);
+    s.a = *p->la;
+    s.b = *p->lb;
+    s.c = *p->lc;
     MYFLT period = 1;
-    MYFLT ps[2] = { *p->kparam1,*p->kparam2 };
+    if(*p->speriod != 0) period = 1/(*p->speriod);
+
     MYFLT sizx = p->sizx, sizy = p->sizy;
     MYFLT theta = p->theta;
     MYFLT *aout = p->aout;
@@ -201,7 +170,7 @@ static int32_t wtPerf(CSOUND *csound, WAVETER *p)
     for (i=offset; i<nsmps; i++) {
 
       /* COMPUTE LOCATION OF SCANNING POINT */
-      ifuncs[kfunc](theta,*p->kx,*p->ky,*p->krx,*p->kry,ps,&xc,&yc);
+      lissformula(theta,*p->kx,*p->ky,*p->krx,*p->kry,&s,&xc,&yc);
       rotate_point(*p->kx,*p->ky,*p->krot,&xc,&yc);
       /* MAP SCANNING POINT TO BE IN UNIT SQUARE */
       xc = xc-FLOOR(xc);
@@ -225,7 +194,7 @@ static int32_t wtPerf(CSOUND *csound, WAVETER *p)
 #define S(x)    sizeof(x)
 
 static OENTRY localops[] = {
-  { "wterrain2", S(WAVETER), TR, 3,  "a", "kkkkkkkkkkkk",
+  { "lterrain", S(LISSTERR), TR, 3,  "a", "kkkkkkkkkkkkkkkkk",
     (SUBR)wtinit, (SUBR)wtPerf },
 };
 
