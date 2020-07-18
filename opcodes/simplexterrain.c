@@ -3,6 +3,8 @@
 
     (C) 2020 Christian Bacher
 
+    The simplex noise algorithm is based on code commited by Stefan Gustavson to the public domain.
+ 
     This file is part of Csound.
 
     The Csound Library is free software; you can redistribute it

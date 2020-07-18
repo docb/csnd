@@ -1,1 +1,2 @@
-# csnd
+# waveterrain opcodes for csound
+
