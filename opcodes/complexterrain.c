@@ -43,6 +43,7 @@ typedef struct {
   MYFLT *krot; // rotation of the curve
   MYFLT *kfunc; // the curve index
   MYFLT *kparam;
+  MYFLT *cfunc;
   MYFLT *ktamp;
   MYFLT *ksize;
   MYFLT *kmode;
@@ -50,22 +51,42 @@ typedef struct {
   double theta;
 
 } COMPLEXTR;
+#define FUNC(f_) double complex (*f_)(double complex, double, double)
+static double complex poly4(double complex z, double ksize, double kamp) {
+    return z*(z-(ksize+I*ksize))*(z-(-ksize+I*ksize))*(z-(ksize-I*ksize))*(z-(-ksize-I*ksize))/(cabs(z-(ksize+I*ksize))*cabs(z-(-ksize+I*ksize))*cabs(z-(ksize-I*ksize))*cabs(z-(-ksize-I*ksize))) + kamp;
+}
+static double complex poly2(double complex z, double ksize, double kamp) {
+    return z*z/cabs(z) + kamp;
+}
+
+static double complex id(double complex z, double ksize, double kamp) {
+    return kamp+sin(ksize*cabs(z))*z;
+}
+
+
+static double complex id2(double complex z, double ksize, double kamp) {
+    return kamp+sin(ksize*creal(z))*cos(ksize*cimag(z))*z;
+}
+
 static double complex fexp(double complex z, double ksize, double kamp ) {
     double complex ex;
     CA(ex,0,(-7.3+ksize)/(1/cpow(cabs(z),2)));
     return kamp + z * cexp(ex);
 }
-static double fexpr(double x, double y, double ksize, double kamp) {
-    return cabs(fexp(x+I*y,ksize,kamp));
+static double fradius(FUNC(f),double x, double y, double ksize, double kamp) {
+    return cabs(f(x+I*y,ksize,kamp));
 }
-static double fexphi(double x, double y, double ksize, double kamp) {
-    return carg(fexp(x+I*y,ksize,kamp));
+static double fphi(FUNC(f),double x, double y, double ksize, double kamp) {
+    return carg(f(x+I*y,ksize,kamp))/M_PI;
 }
-static double fexpreal(double x, double y, double ksize, double kamp) {
-    return creal(fexp(x+I*y,ksize,kamp));
+static double fsinphi(FUNC(f),double x, double y, double ksize, double kamp) {
+    return sin(carg(f(x+I*y,ksize,kamp)));
 }
-static double fexpimag(double x, double y, double ksize, double kamp) {
-    return cimag(fexp(x+I*y,ksize,kamp));
+static double freal(FUNC(f),double x, double y, double ksize, double kamp) {
+    return creal(f(x+I*y,ksize,kamp));
+}
+static double fimag(FUNC(f),double x, double y, double ksize, double kamp) {
+    return cimag(f(x+I*y,ksize,kamp));
 }
 
 
@@ -151,10 +172,10 @@ static void talbot(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT kpar
 }
 
 static void (*ifuncs[8])(MYFLT,MYFLT,MYFLT,MYFLT,MYFLT,MYFLT,MYFLT*,MYFLT*) = { ellipse, lemniskateG, limacon, cornoid, trisec, scarabeus, folium, talbot }; 
-static double (*tfuncs[4])(double,double,double,double) = {fexpr,fexphi,fexpreal,fexpimag};
+static double (*tfuncs[5])(double complex (*f)(double complex,double,double),double,double,double,double) = {fradius,fphi,fsinphi,freal,fimag};
+static double complex (*cfuncs[5])(double complex,double,double) = {fexp,poly4,poly2,id,id2};
 static int32_t wtinit(CSOUND *csound, COMPLEXTR *p)
 {
-
     p->theta = 0.0;
     return OK;
 }
@@ -176,7 +197,10 @@ static int32_t wtPerf(CSOUND *csound, COMPLEXTR *p)
     if(kfunc<0) kfunc = 0; 
     uint32_t tfunc = (uint32_t)*p->kmode;
     if(tfunc<0) tfunc = 0;
-    if(tfunc>3) tfunc = 3;
+    if(tfunc>4) tfunc = 4;
+    uint32_t cfunc = (uint32_t)*p->cfunc;
+    if(cfunc<0) cfunc = 0;
+    if(cfunc>4) cfunc = 4;
     MYFLT period = 1;
     MYFLT theta = p->theta;
     MYFLT *aout = p->aout;
@@ -191,7 +215,7 @@ static int32_t wtPerf(CSOUND *csound, COMPLEXTR *p)
       ifuncs[kfunc](theta,*p->kx,*p->ky,*p->krx,*p->kry,*p->kparam,&xc,&yc);
       rotate_point(*p->kx,*p->ky,*p->krot,&xc,&yc);
       /* OUTPUT AM */
-      aout[i] = tfuncs[tfunc](xc,yc,size,tamp) * amp;
+      aout[i] = tfuncs[tfunc](cfuncs[cfunc],xc,yc,size,tamp) * amp;
 
       /* MOVE SCANNING POINT ROUND THE CURVE */
       theta += pch*((period*TWOPI_F) / csound->GetSr(csound));
@@ -204,7 +228,7 @@ static int32_t wtPerf(CSOUND *csound, COMPLEXTR *p)
 #define S(x)    sizeof(x)
 
 static OENTRY localops[] = {
-  { "complexterrain", S(COMPLEXTR), TR, 3,  "a", "kkkkkkkkkkkk",
+  { "complexterrain", S(COMPLEXTR), TR, 3,  "a", "kkkkkkkkkkkkk",
     (SUBR)wtinit, (SUBR)wtPerf },
 };
 
