@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<!--
+(C) 2020 Christian Bacher
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<body>
+  <canvas id="myCanvas" width="512" height="512" style="border:1px solid #d3d3d3;">
+    Your browser does not support the HTML5 canvas tag.
+  </canvas>
+  <p id='one'></p>
+<form class="form-inline">
+  <label for="zoom">Zoom</label>
+  <input type="text" id="zoom" name="zoom">
+  <label for="gen">Gen</label>
+  <input type="text" id="gen" name="zoom">
+</form>
+  <button onclick="redraw()">Render</button>
+
+  <script>
+
+var c = document.getElementById("myCanvas");
+var ctx = c.getContext("2d");
+ctx.fillStyle = 'black';
+var zoom = document.getElementById("zoom");
+var gen = document.getElementById("gen");
+
+var x = 0;
+function sqr(v) {
+    if(v<0) return -Math.sqrt(-v);
+    return Math.sqrt(v);
+}
+function n(v) {
+  return v==0?0.000001:v;
+}
+var funcs = [
+  function(col, x, y) { return col+Math.sin(x/n(y))*Math.cos(x/n(y));}, //D
+  function(col, x, y) { return col+Math.cos(x/n(y));}, //D
+  function(col, x, y) { return col+Math.sin(y/n(x));}, //D
+  function(col, x, y) { return col+Math.sin(x*x/n(y)-y*y/n(x));}, //D
+  function(col, x, y) { return col+Math.cos(x*x/n(y))+Math.sin(y*y/n(x));}, //D
+  function(col, x, y) { return col*Math.sin(x*y*x)+Math.cos(y*x*y);}, //D
+  function(col, x, y) { return col+((x+y*x)+Math.sin(x*y)+Math.cos(y/n(x)));}, //D
+  function(col, x, y) { return col+sqr(Math.sin(sqr(x)/n(sqr(y))));}, //D
+  function(col,x, y) { return col+Math.sin(x*x+y*y);}, //C
+  function(col,x, y) { return col+Math.sin(x*x)*Math.cos(y*y);}, //C
+  function(col, x, y) { return col+Math.abs(x)*Math.abs(y);}, //C
+  function(col, x, y) { return col+Math.sin(x*y)*Math.cos(x*y);}, //C
+  function(col, x, y) { return col+Math.sin(x*x-y*y);},  //C
+  function(col, x, y) { return col+Math.sin(Math.cos(x)*Math.abs(y)*Math.abs(y));}, //C
+  function(col, x, y) { return col+Math.sin(x*x*x-y*y*y);}, //C
+  function(col, x, y) { return col+Math.sin(y*y*y)+Math.sin(x*x*x);}, //C
+  function(col, x, y) { return col+Math.cos(y*y*y+x*x*x);}, //C
+  function(col, x, y) { return col+Math.cos(y*y*y)+Math.cos(x*x*x);}, //C
+  function(col, x, y) { return col-Math.tan(Math.cos(Math.sqrt(x*y*x*y)));}, //C
+  function(col, x, y) { return col+Math.sin(x*x);}, //C
+  function(col, x, y) { return col+Math.sin(x+y*x*y+x*x);}, //C
+  function(col, x, y) { return col+Math.sin(y+x*y*x+y*y);}, //C
+  function(col, x, y) { return col+Math.abs(x*y+x*x+y*y);}, //C
+  function(col, x, y) { return col+((x+y)*y*x*Math.sin(x)*Math.cos(y));}, //C
+  function(col, x, y) { return col+Math.sin(Math.abs(Math.cos(x+y))+Math.abs(Math.cos(y*x*y)));}, //C
+  function(col, x, y) { return col+Math.sin(x)*Math.cos(y);}, //B
+  function(col, x, y) { return col+Math.cos(x)*Math.sin(y)*Math.cos(x*y);}, //B
+  function(col, x, y) { return col+Math.sin(x)+Math.sin(x)+Math.cos(y)+Math.cos(y);}, //B
+  function(col, x, y) { return col+Math.cos(x)+Math.cos(x)+Math.sin(y)+Math.sin(y);}, //B
+  function(col, x, y) { return col+Math.sin(x)+Math.cos(x)+Math.sin(y)+Math.cos(y);}, //B
+  function(col, x, y) { return col*Math.cos(y)+Math.sin(y)+Math.cos(x)+Math.sin(x);}, //B
+  function(col, x, y) { return col*Math.sqrt(Math.abs(x)+Math.abs(y));}, //B
+  function(col, x, y) { return col+sqr(Math.cos(x)+sqr(x)*Math.sin(y)+sqr(y));}, //B
+  function(col, x, y) { return col*Math.sin(col)*Math.cos(x)*Math.sin(x*y);}, //B
+  function(col, x, y) { return col*Math.sin(col)*Math.cos(y)*Math.sin(x*y);}, //B
+  function(col, x, y) { return col+Math.sin(x*y+x)+Math.cos(y*x+y);}, //B
+  function(col, x, y) { return col+Math.cos(sqr(x+y))*y+sqr(Math.cos(y)*Math.sin(x));}, //B
+  function(col, x, y) { return col+Math.sin(sqr(y+x))*x+sqr(Math.sin(x)*Math.cos(y));}, //B
+  function(col, x, y) { return col+Math.cos(x)*Math.sin(x)+Math.cos(y)*Math.sin(y);}, //B
+  function(col, x, y) { return col+Math.sin(Math.abs(Math.cos(x))+Math.abs(Math.sin(y)));}, //B
+  function(col, x, y) { return col+Math.sin(Math.sqrt(Math.abs(x)))-Math.cos(Math.sqrt(Math.abs(y)));}, //B
+  function(col, x, y) { return col+Math.abs(y)-x;}, //A
+  function(col, x, y) { return col+x+Math.abs(y);}, //A
+  function(col, x, y) { return col+Math.abs(x);}, //A
+  function(col, x, y) { return col+Math.abs(y);}, //A
+  function(col, x, y) { return col+y-Math.abs(x);}, //A
+  function(col, x, y) { return col+Math.abs(x)+y;}, //A
+  function(col, x, y) { return col+Math.abs(y*3);}, //A
+  function(col, x, y) { return col+Math.abs(x*3);}, //A
+  function(col, x, y) { return col*y-Math.sin(x);}, //A
+  function(col, x, y) { return col*x-Math.cos(y);}, //A
+  function(col, x, y) { return col*Math.cos(x+y)*Math.sin(x+y)/2;}, //A
+  function(col, x, y) { return col+Math.atan(((y)+Math.tan((x+y)-Math.sin(x+Math.PI)-Math.sin(x*y/Math.PI)*Math.sin(((y*x+Math.PI))))));}
+]
+function compute(x,y,arr) {
+   let val = 1;
+   arr.forEach(item => {
+      val = funcs[item](val,x,y);
+   });
+   return {
+     r:(Math.sin(10*val)+1)*0.5*0.1+0.1,
+     g:(Math.sin(10*val)+1)*0.5*0.3+0.3,
+     b:(Math.sin(10*val)+1)*0.5*0.4+0.2,
+   }
+}
+function generate(width, height,zoom,gen){
+  var canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  var arr = gen.value.split(',');
+  var arr1 = arr.map(item => parseInt(item));
+  console.log(arr1);
+  var off_ctx = canvas.getContext('2d');
+  var imgData = off_ctx.createImageData(width, height);
+  for (var x=0;x<width;x++) {
+    for(var y=0;y<height;y++) {
+      var color = compute(zoom.value*(x-width/2)/width, zoom.value*(y-height/2)/height,arr1);
+      imgData.data[4*(y*width + x)] = color.r*255;
+      imgData.data[4*(y*width + x) +1] = color.g*255;
+      imgData.data[4*(y*width + x) +2] = color.b*255;
+      imgData.data[4*(y*width + x) +3] = 255;
+    }
+  }
+  console.log(imgData);
+  off_ctx.putImageData(imgData, 0,0);
+  return canvas;
+}
+function redraw(){
+  var gridImage = generate(512, 512,zoom,gen);
+  ctx.clearRect(0,0,c.width, c.height);
+  ctx.drawImage(gridImage, 0, 0);
+}
+
+  </script>
+</body>
+</html>
