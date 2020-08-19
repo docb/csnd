@@ -63,9 +63,16 @@ static double complex id(double complex z, double ksize, double kamp) {
     return kamp+sin(ksize*cabs(z))*z;
 }
 
-
 static double complex id2(double complex z, double ksize, double kamp) {
     return kamp+sin(ksize*creal(z))*cos(ksize*cimag(z))*z;
+}
+
+static double complex cos1(double complex z, double ksize, double kamp) {
+    return kamp+ccos((1+ksize/100)*cabs(z)/z);
+}
+
+static double complex sin1(double complex z, double ksize, double kamp) {
+    return kamp+csin((1+ksize/100)*cabs(z)/z);
 }
 
 static double complex fexp(double complex z, double ksize, double kamp ) {
@@ -173,7 +180,7 @@ static void talbot(MYFLT t, MYFLT kx, MYFLT ky, MYFLT krx, MYFLT kry, MYFLT kpar
 
 static void (*ifuncs[8])(MYFLT,MYFLT,MYFLT,MYFLT,MYFLT,MYFLT,MYFLT*,MYFLT*) = { ellipse, lemniskateG, limacon, cornoid, trisec, scarabeus, folium, talbot }; 
 static double (*tfuncs[5])(double complex (*f)(double complex,double,double),double,double,double,double) = {fradius,fphi,fsinphi,freal,fimag};
-static double complex (*cfuncs[5])(double complex,double,double) = {fexp,poly4,poly2,id,id2};
+static double complex (*cfuncs[7])(double complex,double,double) = {fexp,poly4,poly2,id,id2,cos1,sin1};
 static int32_t wtinit(CSOUND *csound, COMPLEXTR *p)
 {
     p->theta = 0.0;
@@ -200,7 +207,7 @@ static int32_t wtPerf(CSOUND *csound, COMPLEXTR *p)
     if(tfunc>4) tfunc = 4;
     uint32_t cfunc = (uint32_t)*p->cfunc;
     if(cfunc<0) cfunc = 0;
-    if(cfunc>4) cfunc = 4;
+    if(cfunc>6) cfunc = 6;
     MYFLT period = 1;
     MYFLT theta = p->theta;
     MYFLT *aout = p->aout;
