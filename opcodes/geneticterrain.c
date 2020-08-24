@@ -53,16 +53,18 @@ static double sqr(double v) {
   return sqrt(v);
 }
 
-#define N(x) x==0.0?0.0000001:x
+static double n(double v) {
+   return v==0?0.000001:v;
+}
 
-  static double f00(double col, double x, double y) { return col+sin(x/N(y))*cos(x/N(y));} //D
-  static double f01(double col, double x, double y) { return col+cos(x/N(y));} //D
-  static double f02(double col, double x, double y) { return col+sin(y/N(x));} //D
-  static double f03(double col, double x, double y) { return col+sin(x*x/N(y)-y*y/N(x));} //D
-  static double f04(double col, double x, double y) { return col+cos(x*x/N(y))+sin(y*y/N(x));} //D
+  static double f00(double col, double x, double y) { return col+sin(x/n(y))*cos(x/n(y));} //D
+  static double f01(double col, double x, double y) { return col+cos(x/n(y));} //D
+  static double f02(double col, double x, double y) { return col+sin(y/n(x));} //D
+  static double f03(double col, double x, double y) { return col+sin(x*x/n(y)-y*y/n(x));} //D
+  static double f04(double col, double x, double y) { return col+cos(x*x/n(y))+sin(y*y/n(x));} //D
   static double f05(double col, double x, double y) { return col*sin(x*y*x)+cos(y*x*y);} //D
   static double f06(double col, double x, double y) { return col+((x+y*x)+sin(x*y)+cos(y/x));} //D
-  static double f07(double col, double x, double y) { return col+sqr(sin(sqr(x)/N(sqr(y))));} //D
+  static double f07(double col, double x, double y) { return col+sqr(sin(sqr(x)/n(sqr(y))));} //D
 
   static double f08(double col,double x, double y) { return col+sin(x*x+y*y);} //C
   static double f09(double col,double x, double y) { return col+sin(x*x)*cos(y*y);} //C
@@ -252,7 +254,7 @@ static int32_t wtPerf(CSOUND *csound, GENETICTR *p)
 
       /* COMPUTE LOCATION OF SCANNING POINT */
       ifuncs[kfunc](theta,*p->kx*size,*p->ky*size,*p->krx,*p->kry,*p->kparam,&xc,&yc);
-      rotate_point(*p->kx,*p->ky,*p->krot,&xc,&yc);
+      rotate_point(*p->kx*size,*p->ky*size,*p->krot,&xc,&yc);
       /* OUTPUT AM */
       aout[i] = genomFunc(genParam,p->len,xc,yc) * amp;
 
