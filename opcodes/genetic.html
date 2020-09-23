@@ -15,7 +15,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
-
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/7.1.0/math.min.js" integrity="sha512-rCvDXOM8HOkDDjC0l9vQPhUg2n0rKlcsCtDjWG0ajYmVfjgtO6egt/RdSbKSzFCIUaE/OQRwmiU/4PmOeK3J+Q==" crossorigin="anonymous"></script>
+</head>
 <body>
   <canvas id="myCanvas" width="512" height="512" style="border:1px solid #d3d3d3;">
     Your browser does not support the HTML5 canvas tag.
@@ -28,6 +30,7 @@
   <input type="text" id="gen" name="zoom">
 </form>
   <button onclick="redraw()">Render</button>
+  <button onclick="rnd()">Random</button>
 
   <script>
 
@@ -45,60 +48,113 @@ function sqr(v) {
 function n(v) {
   return v==0?0.000001:v;
 }
+
+function ikeda(x,y) {
+  const z = math.complex(x,y);
+  const img = math.complex(0,(-7.3)/(1/math.pow(math.abs(z),2)));
+  return math.add(math.complex(0.5,0),math.multiply(z,math.exp(img)));
+}
+function cos(x,y) {
+  const z = math.complex(x,y);
+  return math.cos(math.divide(math.complex(math.abs(z),0),z));
+}
+function ikeda_arg(x,y) {
+  return ikeda(x,y).toPolar().phi;
+}
+function ikeda_sinarg(x,y) {
+  return math.sin(ikeda(x,y).toPolar().phi);
+}
+function ikeda_abs(x,y) {
+  return ikeda(x,y).toPolar().r;
+}
+function ikeda_re(x,y) {
+  return ikeda(x,y).re;
+}
+function ikeda_img(x,y) {
+  return ikeda(x,y).im;
+}
+function cos_arg(x,y) {
+  return cos(x,y).toPolar().phi;
+}
+function cos_sinarg(x,y) {
+  return math.sin(cos(x,y).toPolar().phi);
+}
+function cos_abs(x,y) {
+  return cos(x,y).toPolar().r;
+}
+function cos_re(x,y) {
+  return cos(x,y).re;
+}
+function cos_img(x,y) {
+  return cos(x,y).im;
+}
+
+
 var funcs = [
-  function(col, x, y) { return col+Math.sin(x/n(y))*Math.cos(x/n(y));}, //D
-  function(col, x, y) { return col+Math.cos(x/n(y));}, //D
-  function(col, x, y) { return col+Math.sin(y/n(x));}, //D
-  function(col, x, y) { return col+Math.sin(x*x/n(y)-y*y/n(x));}, //D
-  function(col, x, y) { return col+Math.cos(x*x/n(y))+Math.sin(y*y/n(x));}, //D
-  function(col, x, y) { return col*Math.sin(x*y*x)+Math.cos(y*x*y);}, //D
-  function(col, x, y) { return col+((x+y*x)+Math.sin(x*y)+Math.cos(y/n(x)));}, //D
-  function(col, x, y) { return col+sqr(Math.sin(sqr(x)/n(sqr(y))));}, //D
-  function(col,x, y) { return col+Math.sin(x*x+y*y);}, //C
-  function(col,x, y) { return col+Math.sin(x*x)*Math.cos(y*y);}, //C
-  function(col, x, y) { return col+Math.abs(x)*Math.abs(y);}, //C
-  function(col, x, y) { return col+Math.sin(x*y)*Math.cos(x*y);}, //C
-  function(col, x, y) { return col+Math.sin(x*x-y*y);},  //C
-  function(col, x, y) { return col+Math.sin(Math.cos(x)*Math.abs(y)*Math.abs(y));}, //C
-  function(col, x, y) { return col+Math.sin(x*x*x-y*y*y);}, //C
-  function(col, x, y) { return col+Math.sin(y*y*y)+Math.sin(x*x*x);}, //C
-  function(col, x, y) { return col+Math.cos(y*y*y+x*x*x);}, //C
-  function(col, x, y) { return col+Math.cos(y*y*y)+Math.cos(x*x*x);}, //C
-  function(col, x, y) { return col-Math.tan(Math.cos(Math.sqrt(x*y*x*y)));}, //C
-  function(col, x, y) { return col+Math.sin(x*x);}, //C
-  function(col, x, y) { return col+Math.sin(x+y*x*y+x*x);}, //C
-  function(col, x, y) { return col+Math.sin(y+x*y*x+y*y);}, //C
-  function(col, x, y) { return col+Math.abs(x*y+x*x+y*y);}, //C
-  function(col, x, y) { return col+((x+y)*y*x*Math.sin(x)*Math.cos(y));}, //C
-  function(col, x, y) { return col+Math.sin(Math.abs(Math.cos(x+y))+Math.abs(Math.cos(y*x*y)));}, //C
-  function(col, x, y) { return col+Math.sin(x)*Math.cos(y);}, //B
-  function(col, x, y) { return col+Math.cos(x)*Math.sin(y)*Math.cos(x*y);}, //B
-  function(col, x, y) { return col+Math.sin(x)+Math.sin(x)+Math.cos(y)+Math.cos(y);}, //B
-  function(col, x, y) { return col+Math.cos(x)+Math.cos(x)+Math.sin(y)+Math.sin(y);}, //B
-  function(col, x, y) { return col+Math.sin(x)+Math.cos(x)+Math.sin(y)+Math.cos(y);}, //B
-  function(col, x, y) { return col*Math.cos(y)+Math.sin(y)+Math.cos(x)+Math.sin(x);}, //B
-  function(col, x, y) { return col*Math.sqrt(Math.abs(x)+Math.abs(y));}, //B
-  function(col, x, y) { return col+sqr(Math.cos(x)+sqr(x)*Math.sin(y)+sqr(y));}, //B
-  function(col, x, y) { return col*Math.sin(col)*Math.cos(x)*Math.sin(x*y);}, //B
-  function(col, x, y) { return col*Math.sin(col)*Math.cos(y)*Math.sin(x*y);}, //B
-  function(col, x, y) { return col+Math.sin(x*y+x)+Math.cos(y*x+y);}, //B
-  function(col, x, y) { return col+Math.cos(sqr(x+y))*y+sqr(Math.cos(y)*Math.sin(x));}, //B
-  function(col, x, y) { return col+Math.sin(sqr(y+x))*x+sqr(Math.sin(x)*Math.cos(y));}, //B
-  function(col, x, y) { return col+Math.cos(x)*Math.sin(x)+Math.cos(y)*Math.sin(y);}, //B
-  function(col, x, y) { return col+Math.sin(Math.abs(Math.cos(x))+Math.abs(Math.sin(y)));}, //B
-  function(col, x, y) { return col+Math.sin(Math.sqrt(Math.abs(x)))-Math.cos(Math.sqrt(Math.abs(y)));}, //B
-  function(col, x, y) { return col+Math.abs(y)-x;}, //A
-  function(col, x, y) { return col+x+Math.abs(y);}, //A
-  function(col, x, y) { return col+Math.abs(x);}, //A
-  function(col, x, y) { return col+Math.abs(y);}, //A
-  function(col, x, y) { return col+y-Math.abs(x);}, //A
-  function(col, x, y) { return col+Math.abs(x)+y;}, //A
-  function(col, x, y) { return col+Math.abs(y*3);}, //A
-  function(col, x, y) { return col+Math.abs(x*3);}, //A
-  function(col, x, y) { return col*y-Math.sin(x);}, //A
-  function(col, x, y) { return col*x-Math.cos(y);}, //A
-  function(col, x, y) { return col*Math.cos(x+y)*Math.sin(x+y)/2;}, //A
-  function(col, x, y) { return col+Math.atan(((y)+Math.tan((x+y)-Math.sin(x+Math.PI)-Math.sin(x*y/Math.PI)*Math.sin(((y*x+Math.PI))))));}
+  function(col, x, y) { return col+Math.sin(x/n(y))*Math.cos(x/n(y));}, //D 00
+  function(col, x, y) { return col+Math.cos(x/n(y));}, //D 01
+  function(col, x, y) { return col+Math.sin(y/n(x));}, //D 02
+  function(col, x, y) { return col+Math.sin(x*x/n(y)-y*y/n(x));}, //D 03
+  function(col, x, y) { return col+Math.cos(x*x/n(y))+Math.sin(y*y/n(x));}, //D 04
+  function(col, x, y) { return col*Math.sin(x*y*x)+Math.cos(y*x*y);}, //D 05
+  function(col, x, y) { return col+((x+y*x)+Math.sin(x*y)+Math.cos(y/n(x)));}, //D 06
+  function(col, x, y) { return col+sqr(Math.sin(sqr(x)/n(sqr(y))));}, //D 07
+  function(col,x, y) { return col+Math.sin(x*x+y*y);}, //C 08
+  function(col,x, y) { return col+Math.sin(x*x)*Math.cos(y*y);}, //C 09
+  function(col, x, y) { return col+Math.abs(x)*Math.abs(y);}, //C 10
+  function(col, x, y) { return col+Math.sin(x*y)*Math.cos(x*y);}, //C 11
+  function(col, x, y) { return col+Math.sin(x*x-y*y);},  //C 12
+  function(col, x, y) { return col+Math.sin(Math.cos(x)*Math.abs(y)*Math.abs(y));}, //C 13
+  function(col, x, y) { return col+Math.sin(x*x*x-y*y*y);}, //C 14
+  function(col, x, y) { return col+Math.sin(y*y*y)+Math.sin(x*x*x);}, //C 15
+  function(col, x, y) { return col+Math.cos(y*y*y+x*x*x);}, //C 16
+  function(col, x, y) { return col+Math.cos(y*y*y)+Math.cos(x*x*x);}, //C 17
+  function(col, x, y) { return col-Math.tan(Math.cos(Math.sqrt(x*y*x*y)));}, //C 18
+  function(col, x, y) { return col+Math.sin(x*x);}, //C 19
+  function(col, x, y) { return col+Math.sin(x+y*x*y+x*x);}, //C 20
+  function(col, x, y) { return col+Math.sin(y+x*y*x+y*y);}, //C 21
+  function(col, x, y) { return col+Math.abs(x*y+x*x+y*y);}, //C 22
+  function(col, x, y) { return col+((x+y)*y*x*Math.sin(x)*Math.cos(y));}, //C 23
+  function(col, x, y) { return col+Math.sin(Math.abs(Math.cos(x+y))+Math.abs(Math.cos(y*x*y)));}, //C 24
+  function(col, x, y) { return col+Math.sin(x)*Math.cos(y);}, //B 25
+  function(col, x, y) { return col+Math.cos(x)*Math.sin(y)*Math.cos(x*y);}, //B 26
+  function(col, x, y) { return col+Math.sin(x)+Math.sin(x)+Math.cos(y)+Math.cos(y);}, //B 27
+  function(col, x, y) { return col+Math.cos(x)+Math.cos(x)+Math.sin(y)+Math.sin(y);}, //B 28
+  function(col, x, y) { return col+Math.sin(x)+Math.cos(x)+Math.sin(y)+Math.cos(y);}, //B 29
+  function(col, x, y) { return col*Math.cos(y)+Math.sin(y)+Math.cos(x)+Math.sin(x);}, //B 30
+  function(col, x, y) { return col*Math.sqrt(Math.abs(x)+Math.abs(y));}, //B 31
+  function(col, x, y) { return col+sqr(Math.cos(x)+sqr(x)*Math.sin(y)+sqr(y));}, //B 32
+  function(col, x, y) { return col*Math.sin(col)*Math.cos(x)*Math.sin(x*y);}, //B 33
+  function(col, x, y) { return col*Math.sin(col)*Math.cos(y)*Math.sin(x*y);}, //B 34
+  function(col, x, y) { return col+Math.sin(x*y+x)+Math.cos(y*x+y);}, //B 35
+  function(col, x, y) { return col+Math.cos(sqr(x+y))*y+sqr(Math.cos(y)*Math.sin(x));}, //B 36
+  function(col, x, y) { return col+Math.sin(sqr(y+x))*x+sqr(Math.sin(x)*Math.cos(y));}, //B 37
+  function(col, x, y) { return col+Math.cos(x)*Math.sin(x)+Math.cos(y)*Math.sin(y);}, //B 38
+  function(col, x, y) { return col+Math.sin(Math.abs(Math.cos(x))+Math.abs(Math.sin(y)));}, //B 39
+  function(col, x, y) { return col+Math.sin(Math.sqrt(Math.abs(x)))-Math.cos(Math.sqrt(Math.abs(y)));}, //B 40
+  function(col, x, y) { return col+Math.abs(y)-x;}, //A 41
+  function(col, x, y) { return col+x+Math.abs(y);}, //A 42
+  function(col, x, y) { return col+Math.abs(x);}, //A 43
+  function(col, x, y) { return col+Math.abs(y);}, //A 44
+  function(col, x, y) { return col+y-Math.abs(x);}, //A 45
+  function(col, x, y) { return col+Math.abs(x)+y;}, //A 46
+  function(col, x, y) { return col+Math.abs(y*3);}, //A 47
+  function(col, x, y) { return col+Math.abs(x*3);}, //A 48
+  function(col, x, y) { return col*y-Math.sin(x);}, //A 49
+  function(col, x, y) { return col*x-Math.cos(y);}, //A 50
+  function(col, x, y) { return col*Math.cos(x+y)*Math.sin(x+y)/2;}, //A 51
+  function(col, x, y) { return col+Math.atan(((y)+Math.tan((x+y)-Math.sin(x+Math.PI)-Math.sin(x*y/Math.PI)*Math.sin(((y*x+Math.PI))))));},// 52
+  function(col, x, y) { return col*Math.sin(x*x);}, //C 53
+  function(col, x, y) { return col*ikeda_arg(x,y);}, //E 54
+  function(col, x, y) { return col*ikeda_sinarg(x,y);}, //E 55
+  function(col, x, y) { return col*ikeda_abs(x,y);}, //E 56
+  function(col, x, y) { return col*ikeda_re(x,y);}, //E 57
+  function(col, x, y) { return col*ikeda_img(x,y);}, //E 58
+  function(col, x, y) { return col*cos_arg(x,y);}, //E 59
+  function(col, x, y) { return col*cos_sinarg(x,y);}, //E 60
+  function(col, x, y) { return col*cos_abs(x,y);}, //E 61
+  function(col, x, y) { return col*cos_re(x,y);}, //E 62
+  function(col, x, y) { return col*cos_img(x,y);}, //E 63
 ]
 function compute(x,y,arr) {
    let val = 1;
@@ -137,6 +193,16 @@ function redraw(){
   var gridImage = generate(512, 512,zoom,gen);
   ctx.clearRect(0,0,c.width, c.height);
   ctx.drawImage(gridImage, 0, 0);
+}
+function rnd() {
+  let len = math.randomInt(2,6);
+  let arr = [];
+  for(let k=0;k<len;k++) {
+     arr.push(math.randomInt(0,64));
+  }
+  console.log(arr.join(','));
+  gen.value = arr.join(',');
+  redraw();
 }
 
   </script>

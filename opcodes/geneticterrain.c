@@ -23,6 +23,8 @@
 
 #include <csdl.h>
 #include <math.h>
+#include <complex.h>
+#define CA(z_,r_,i_) (z_) = (r_) + I * (i_)
 
 /*  Wave-terrain synthesis opcode with genetic functions
  *
@@ -56,6 +58,52 @@ static double sqr(double v) {
 static double n(double v) {
    return v==0?0.000001:v;
 }
+
+#define FUNC(f_) double complex (*f_)(double complex, double, double)
+static double complex poly4(double complex z, double ksize, double kamp) {
+    return z*(z-(ksize+I*ksize))*(z-(-ksize+I*ksize))*(z-(ksize-I*ksize))*(z-(-ksize-I*ksize))/(cabs(z-(ksize+I*ksize))*cabs(z-(-ksize+I*ksize))*cabs(z-(ksize-I*ksize))*cabs(z-(-ksize-I*ksize))) + kamp;
+}
+static double complex poly2(double complex z, double ksize, double kamp) {
+    return z*z/cabs(z) + kamp;
+}
+
+static double complex id(double complex z, double ksize, double kamp) {
+    return kamp+sin(ksize*cabs(z))*z;
+}
+
+static double complex id2(double complex z, double ksize, double kamp) {
+    return kamp+sin(ksize*creal(z))*cos(ksize*cimag(z))*z;
+}
+
+static double complex cos1(double complex z, double ksize, double kamp) {
+    return kamp+ccos((1+ksize/100)*cabs(z)/z);
+}
+
+static double complex sin1(double complex z, double ksize, double kamp) {
+    return kamp+csin((1+ksize/100)*cabs(z)/z);
+}
+
+static double complex fexp(double complex z, double ksize, double kamp ) {
+    double complex ex;
+    CA(ex,0,(-7.3+ksize)/(1/cpow(cabs(z),2)));
+    return kamp + z * cexp(ex);
+}
+static double fradius(FUNC(f),double x, double y, double ksize, double kamp) {
+    return cabs(f(x+I*y,ksize,kamp));
+}
+static double fphi(FUNC(f),double x, double y, double ksize, double kamp) {
+    return carg(f(x+I*y,ksize,kamp))/M_PI;
+}
+static double fsinphi(FUNC(f),double x, double y, double ksize, double kamp) {
+    return sin(carg(f(x+I*y,ksize,kamp)));
+}
+static double freal(FUNC(f),double x, double y, double ksize, double kamp) {
+    return creal(f(x+I*y,ksize,kamp));
+}
+static double fimag(FUNC(f),double x, double y, double ksize, double kamp) {
+    return cimag(f(x+I*y,ksize,kamp));
+}
+
 
   static double f00(double col, double x, double y) { return col+sin(x/n(y))*cos(x/n(y));} //D
   static double f01(double col, double x, double y) { return col+cos(x/n(y));} //D
@@ -112,15 +160,26 @@ static double n(double v) {
   static double f49(double col, double x, double y) { return col*y-sin(x);} //A
   static double f50(double col, double x, double y) { return col*x-cos(y);} //A
   static double f51(double col, double x, double y) { return col*cos(x+y)*sin(x+y)/2;} //A
-  static double f52(double col, double x, double y) { return atan(((y)+tan((x+y)-sin(x+M_PI)-sin(x*y/M_PI)*sin(((y*x+M_PI))))));} //A
+  static double f52(double col, double x, double y) { return col*atan(((y)+tan((x+y)-sin(x+M_PI)-sin(x*y/M_PI)*sin(((y*x+M_PI))))));} //A
+  static double f53(double col, double x, double y) { return col*sin(x*x);} //C
+  static double f54(double col, double x, double y) { return col*fphi(fexp,x,y,0,0);}
+  static double f55(double col, double x, double y) { return col*fsinphi(fexp,x,y,0,0);}
+  static double f56(double col, double x, double y) { return col*fradius(fexp,x,y,0,0);}
+  static double f57(double col, double x, double y) { return col*freal(fexp,x,y,0,0);}
+  static double f58(double col, double x, double y) { return col*fimag(fexp,x,y,0,0);}
+  static double f59(double col, double x, double y) { return col*fphi(cos1,x,y,0,0);}
+  static double f60(double col, double x, double y) { return col*fsinphi(cos1,x,y,0,0);}
+  static double f61(double col, double x, double y) { return col*fradius(cos1,x,y,0,0);}
+  static double f62(double col, double x, double y) { return col*freal(cos1,x,y,0,0);}
+  static double f63(double col, double x, double y) { return col*fimag(cos1,x,y,0,0);}
 
 
-static double (*tfuncs[53])(double,double,double) = {f00,f01,f02,f03,f04,f05,f06,f07,f08,f09,f10,f11,f12,f13,f14,f15,f16,f17,f18,f19,f20,f21,f22,f23,f24,f25,f26,f27,f28,f29,f30,f31,f32,f33,f34,f35,f36,f37,f38,f39,f40,f41,f42,f43,f44,f45,f46,f47,f48,f49,f50,f51,f52};
+static double (*tfuncs[64])(double,double,double) = {f00,f01,f02,f03,f04,f05,f06,f07,f08,f09,f10,f11,f12,f13,f14,f15,f16,f17,f18,f19,f20,f21,f22,f23,f24,f25,f26,f27,f28,f29,f30,f31,f32,f33,f34,f35,f36,f37,f38,f39,f40,f41,f42,f43,f44,f45,f46,f47,f48,f49,f50,f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63};
 static double genomFunc(double *gen, int len, double x, double y) {
    double v = 1;
    for(int k=0;k<len;k++) {
      int index = -1;
-     if(gen[k]>=0 && gen[k]<53) {
+     if(gen[k]>=0 && gen[k]<64) {
         index = (int)floor(gen[k]);
      } 
      if(index >=0)
